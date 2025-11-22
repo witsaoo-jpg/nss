@@ -1,310 +1,1289 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ระบบจัดเวรพยาบาลอัจฉริยะ</title>
-  <style>
-    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--glass:rgba(255,255,255,0.04)}
-    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
-    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071021 0%,#081526 60%);color:#e6eef6;padding:28px}
-    .app{max-width:1200px;margin:0 auto}
-    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
-    h1{font-size:20px;margin:0}
-    p.lead{margin:0;color:var(--muted);font-size:13px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;padding:14px;box-shadow:0 6px 24px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
-    .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
-    .flex{display:flex;gap:8px;align-items:center}
-    input,select,button,textarea{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:inherit}
-    button{cursor:pointer;background:var(--accent);color:#022; font-weight:600;border:none}
-    .muted{color:var(--muted);font-size:13px}
-    .leftcol{width:320px;display:flex;flex-direction:column;gap:12px}
-    .layout{display:flex;gap:16px}
-    .nurses-list{max-height:360px;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
-    .nurse-item{display:flex;justify-content:space-between;gap:8px;padding:8px;background:var(--glass);border-radius:8px}
-    .nurse-item .name{font-weight:600}
-    .roster{flex:1;overflow:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{padding:8px;border:1px solid rgba(255,255,255,0.04);text-align:center}
-    th{background:rgba(255,255,255,0.02);font-weight:700}
-    td.shift{min-width:120px}
-    .chip{display:inline-block;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.03);cursor:pointer}
-    .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
-    .stat{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;min-width:120px;text-align:left}
-    .toolbar{display:flex;gap:8px;align-items:center}
-    .small{font-size:12px;padding:6px 8px}
-    .export-area{width:100%;height:120px;background:rgba(255,255,255,0.02);border-radius:8px;padding:8px;color:var(--muted);resize:vertical}
-    .hint{font-size:12px;color:var(--muted)}
-    footer{margin-top:12px;color:var(--muted);font-size:12px}
-    /* responsive */
-    @media (max-width:900px){.layout{flex-direction:column}.leftcol{width:100%}}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตารางเวรพยาบาล v31 - Ultra Balanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.294.0",
+            "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs"
+        }
+    }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .overflow-x-auto::-webkit-scrollbar { height: 12px; }
+        .overflow-x-auto::-webkit-scrollbar-track { background: #f1f5f9; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { 
+            background: #94a3b8; 
+            border-radius: 6px; 
+            border: 2px solid #f1f5f9; 
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        table { 
+            border-spacing: 0;
+            width: 100%;
+        }
+        
+        th, td {
+            white-space: nowrap;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            height: 30px;
+            padding: 0 2px;
+            font-size: 13px;
+        }
+
+        /* Sticky Columns */
+        .sticky-1 { 
+            position: sticky; 
+            left: 0; 
+            width: 30px; 
+            min-width: 30px; 
+            max-width: 30px; 
+            background-color: white; 
+            border-right: 1px solid #e2e8f0; 
+            z-index: 35; 
+        }
+        
+        .sticky-2 { 
+            position: sticky; 
+            left: 30px; 
+            width: 110px; 
+            min-width: 110px; 
+            max-width: 110px; 
+            background-color: white; 
+            border-right: 1px solid #e2e8f0; 
+            z-index: 35; 
+        }
+        
+        .sticky-3 { 
+            position: sticky; 
+            left: 140px; 
+            width: 50px; 
+            min-width: 50px; 
+            max-width: 50px; 
+            background-color: white; 
+            border-right: 2px solid #cbd5e1; 
+            box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.1); 
+            z-index: 35; 
+        }
+        
+        thead tr th { 
+            position: sticky; 
+            top: 0; 
+            z-index: 40; 
+            background-color: #f8fafc; 
+        }
+        
+        thead tr th.sticky-1, 
+        thead tr th.sticky-2, 
+        thead tr th.sticky-3 { 
+            z-index: 50; 
+        }
+
+        .cell-hover:hover { 
+            filter: brightness(0.95); 
+            cursor: pointer; 
+            transform: scale(1.05);
+            transition: all 0.15s;
+        }
+        
+        .header-hover:hover { 
+            background-color: #e2e8f0; 
+            cursor: pointer; 
+            user-select: none; 
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Loading Spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            font-size: 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 5px;
+        }
+
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            table {
+                font-size: 10px;
+            }
+            
+            .sticky-1, .sticky-2, .sticky-3 {
+                position: static;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            th, td {
+                font-size: 11px;
+                padding: 0 1px;
+            }
+            
+            .sticky-2 {
+                width: 80px;
+                min-width: 80px;
+                max-width: 80px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>ระบบจัดเวรพยาบาลอัจฉริยะ</h1>
-        <p class="lead">สร้างตารางเวรอัตโนมัติ กระจายภาระอย่างเท่าเทียม รองรับเช้า/บ่าย/ดึก — ไม่ใช้ localStorage (เก็บในหน่วยความจำของหน้า)</p>
-      </div>
-      <div class="toolbar">
-        <button id="autoGen">สร้างตารางอัตโนมัติ</button>
-        <button id="clear">ล้างตาราง</button>
-        <button id="download">ดาวน์โหลด JSON</button>
-      </div>
-    </header>
+    <div id="root"></div>
 
-    <div class="layout">
-      <aside class="leftcol card">
-        <div>
-          <strong>จัดการพยาบาล</strong>
-          <div class="muted">เพิ่มชื่อแล้วกด +</div>
-        </div>
-        <div class="flex">
-          <input id="nurseName" placeholder="ชื่อพยาบาล" />
-          <button id="addNurse">+</button>
-        </div>
-        <div class="nurses-list card" id="nursesList" style="padding:10px"></div>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Download, Calculator, UserPlus, Trash2, ChevronLeft, ChevronRight, Zap, Eraser, Settings, Edit2, Save, X, Info, BarChart3 } from 'lucide-react';
+        import * as XLSX from 'xlsx';
 
-        <div style="margin-top:6px">
-          <strong>ตั้งค่าเวร</strong>
-          <div class="muted">จำนวนวันและกะ</div>
-        </div>
-        <div class="controls">
-          <div>
-            <label class="muted">วัน (เริ่มจาก)</label>
-            <input type="date" id="startDate" />
-          </div>
-          <div>
-            <label class="muted">จำนวนวัน</label>
-            <select id="days">
-              <option value="7">7 วัน (1 สัปดาห์)</option>
-              <option value="14">14 วัน</option>
-              <option value="28">28 วัน</option>
-            </select>
-          </div>
-        </div>
-        <div class="controls">
-          <div>
-            <label class="muted">กะ</label>
-            <select id="shifts" multiple>
-              <option value="M" selected>เช้า (M)</option>
-              <option value="A" selected>บ่าย (A)</option>
-              <option value="N" selected>ดึก (N)</option>
-            </select>
-            <div class="hint">กด Ctrl/Command เพื่อเลือกหลายกะ</div>
-          </div>
-          <div>
-            <label class="muted">กะต่อวัน</label>
-            <select id="perDay">
-              <option value="1">1 คน/กะ</option>
-              <option value="2" selected>2 คน/กะ</option>
-            </select>
-          </div>
-        </div>
+        const RATES = { shift: 600, ot: 600 };
 
-        <div style="margin-top:8px">
-          <strong>สรุปการแจกงาน (ตัวอย่าง)</strong>
-          <div class="stats" id="stats"></div>
-        </div>
+        const SHIFT_TYPES = {
+            '0':      { label: '0',      color: 'bg-white text-gray-300 font-medium' },
+            'ช':      { label: 'ช',      color: 'bg-green-50 text-green-700 font-bold' },
+            'บ':      { label: 'บ',      color: 'bg-yellow-50 text-yellow-700 font-bold' },
+            'ด':      { label: 'ด',      color: 'bg-purple-50 text-purple-700 font-bold' },
+            'Va':     { label: 'Va',     color: 'bg-blue-50 text-blue-700 font-bold text-xs' },
+            'ปช':     { label: 'ปช',     color: 'bg-orange-50 text-orange-700 font-bold text-xs' },
+            'ลาป่วย': { label: 'ลาป่วย', color: 'bg-red-100 text-red-700 font-bold text-[10px]' },
+            'ลากิจ':  { label: 'ลากิจ',  color: 'bg-indigo-100 text-indigo-700 font-bold text-[10px]' }
+        };
+        
+        const NON_WORKING_CODES = ['Va', 'ปช', 'ลาป่วย', 'ลากิจ'];
+        const CYCLE_TOP = ['0', 'ช', 'บ', 'ด']; 
+        const CYCLE_BOTTOM = ['0', 'ช', 'บ', 'ด', ...NON_WORKING_CODES];
 
-      </aside>
+        const INITIAL_NURSES = [
+            { id: 1, name: "นางสงบ จันทร์ธรรม", pos: "หนต." },
+            { id: 2, name: "นายวิษณุกรณ์ โยยา", pos: "L5" },
+            { id: 3, name: "น.ส.จารุพร ศรีสมบัติ", pos: "L5" },
+            { id: 4, name: "น.ส.เขมรุจิ ยาสู่", pos: "L4" },
+            { id: 5, name: "น.ส.ปาจารีย์ นิพันธ์", pos: "L4" },
+            { id: 6, name: "น.ส.สุนิสา สุขเอิบ", pos: "L4" },
+            { id: 7, name: "น.ส.สุภาวดี ยมน้อย", pos: "L2" },
+            { id: 8, name: "น.ส.ทิพปภา การพิธี", pos: "L2" },
+            { id: 9, name: "น.ส.สุนันทรา เกตุพงษ์", pos: "L1" },
+            { id: 10, name: "น.ส.สิริรัตน์ บัวประเสริฐ", pos: "L1" }
+        ];
 
-      <main class="roster card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <strong>ตารางเวรรายสัปดาห์</strong>
-            <div class="muted">คลิกที่ cell เพื่อเปลี่ยนพยาบาล</div>
-          </div>
-          <div class="muted">หมายเหตุ: ระบบเก็บข้อมูลชั่วคราวในหน้านี้เท่านั้น</div>
-        </div>
+        export default function RosterApp() {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [nurses, setNurses] = useState(INITIAL_NURSES);
+            const [schedule, setSchedule] = useState({});
+            const [customHolidays, setCustomHolidays] = useState([]);
+            const [workDayLimit, setWorkDayLimit] = useState(20);
+            const [showModal, setShowModal] = useState(false);
+            const [showStatsModal, setShowStatsModal] = useState(false);
+            const [newNurse, setNewNurse] = useState({ name: '', pos: 'L1' });
+            const [customConditions, setCustomConditions] = useState('');
+            const [editingNurse, setEditingNurse] = useState(null);
+            const [isGenerating, setIsGenerating] = useState(false);
 
-        <div id="rosterWrap" style="margin-top:12px;overflow:auto"></div>
+            // Load Data
+            useEffect(() => {
+                const savedData = localStorage.getItem('roster_data_v31');
+                const savedNurses = localStorage.getItem('roster_nurses_v31');
+                const savedHolidays = localStorage.getItem('roster_holidays_v31');
+                const savedLimit = localStorage.getItem('roster_limit_v31');
+                const savedConditions = localStorage.getItem('roster_conditions_v31');
+                
+                if (savedData) setSchedule(JSON.parse(savedData));
+                if (savedNurses) setNurses(JSON.parse(savedNurses));
+                if (savedHolidays) setCustomHolidays(JSON.parse(savedHolidays));
+                if (savedLimit) setWorkDayLimit(Number(savedLimit));
+                if (savedConditions) setCustomConditions(savedConditions);
+            }, []);
 
-        <div style="margin-top:12px">
-          <strong>JSON ของตาราง (Export/Import)</strong>
-          <textarea id="jsonArea" class="export-area" placeholder='วาง JSON ที่นี่ เพื่อ Import'></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="importJson" class="small">Import JSON</button>
-            <button id="resetNurses" class="small">Reset รายชื่อ</button>
-          </div>
-        </div>
+            const saveAll = (updatedNurses, updatedSchedule, updatedHolidays, updatedLimit, updatedConditions) => {
+                if(updatedNurses) {
+                    setNurses(updatedNurses);
+                    localStorage.setItem('roster_nurses_v31', JSON.stringify(updatedNurses));
+                }
+                if(updatedSchedule) {
+                    setSchedule(updatedSchedule);
+                    localStorage.setItem('roster_data_v31', JSON.stringify(updatedSchedule));
+                }
+                if(updatedHolidays) {
+                    setCustomHolidays(updatedHolidays);
+                    localStorage.setItem('roster_holidays_v31', JSON.stringify(updatedHolidays));
+                }
+                if(updatedLimit !== undefined) {
+                    setWorkDayLimit(updatedLimit);
+                    localStorage.setItem('roster_limit_v31', updatedLimit);
+                }
+                if(updatedConditions !== undefined) {
+                    setCustomConditions(updatedConditions);
+                    localStorage.setItem('roster_conditions_v31', updatedConditions);
+                }
+            };
 
-      </main>
-    </div>
+            const getDaysInMonth = () => new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+            const getKey = (id, row, day) => `${id}-${row}-${day}`;
+            const isHN = (n) => n.pos && n.pos.includes('หนต');
+            const isHoliday = (day) => {
+                const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                return [0, 6].includes(d.getDay()) || customHolidays.includes(day);
+            };
 
-    <footer class="muted">ออกแบบโดย ChatGPT — ปรับแต่งอัลกอริทึมได้ตามนโยบายโรงพยาบาล (ตัวอย่างนี้ไม่เชื่อมฐานข้อมูล)</footer>
-  </div>
+            const canDoNight = (n) => ['หนต.', 'L5', 'L4'].includes(n.pos);
+            const canDoDouble = (n) => !['L1'].includes(n.pos);
 
-<script>
-// === Model (in-memory) ===
-const DB = {
-  nurses: [], // {id,name}
-  roster: {}, // dayIndex -> shift -> [nurseIds]
-  settings: {
-    startDate: null,
-    days: 7,
-    shifts: ['M','A','N'],
-    perShift: 2
-  }
-};
-let idCounter = 1;
+            const clearAllData = () => {
+                if(confirm("⚠️ ยืนยันล้างตารางเวรทั้งหมด?\n\n(ข้อมูลจะถูกลบถาวร)")) {
+                    setSchedule({});
+                    saveAll(null, {}, null, workDayLimit, customConditions);
+                }
+            };
 
-// === Utils ===
-const $ = id => document.getElementById(id);
-function uid(){return 'n'+(idCounter++)}
-function formatDateISO(d){return d.toISOString().slice(0,10)}
-function addDays(d, n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+            // AUTO GENERATE LOGIC v31
+            const autoGenerateRoster = async () => {
+                if (!confirm(`🎯 จัดเวรอัตโนมัติ (v31: Ultra Balanced)\n\n✅ กระจายเวรให้เท่าเทียมทุกคน\n✅ หมุนเวียนเวรเช้า/บ่าย/ดึก\n✅ สมดุล OT ระหว่างทีม\n✅ เป้าหมาย ${workDayLimit} วัน/คน\n✅ ห้ามเวรดึกติดกัน\n\nดำเนินการต่อ?`)) return;
 
-// === UI Binding ===
-function renderNurses(){
-  const wrap = $('nursesList');wrap.innerHTML='';
-  DB.nurses.forEach(n=>{
-    const el = document.createElement('div');el.className='nurse-item';
-    el.innerHTML = `<div><div class="name">${n.name}</div><div class="muted">id:${n.id}</div></div>`;
-    const r = document.createElement('div');
-    const del = document.createElement('button');del.textContent='ลบ';del.className='small';del.onclick=()=>{DB.nurses=DB.nurses.filter(x=>x.id!==n.id);renderNurses();renderRoster();}
-    r.appendChild(del);
-    el.appendChild(r);wrap.appendChild(el);
-  });
-}
+                setIsGenerating(true);
+                await new Promise(resolve => setTimeout(resolve, 100));
 
-function renderRoster(){
-  const wrap = $('rosterWrap');
-  const days = DB.settings.days;const shifts = DB.settings.shifts;const per = DB.settings.perShift;const start = DB.settings.startDate?new Date(DB.settings.startDate):new Date();
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const trh = document.createElement('tr');
-  trh.appendChild(document.createElement('th'));
-  for(let i=0;i<days;i++){
-    const d = addDays(new Date(start), i);
-    const th = document.createElement('th');th.innerHTML = `${formatDateISO(d)}<div class='muted'>${d.toLocaleDateString('th-TH',{weekday:'short'})}</div>`;trh.appendChild(th);
-  }
-  thead.appendChild(trh);table.appendChild(thead);
+                const days = getDaysInMonth();
+                let newSchedule = { ...schedule };
+                
+                let workDayCounts = {};
+                let morningCounts = {};
+                let afternoonCounts = {};
+                let nightCounts = {};
+                let otCounts = {};
+                
+                nurses.forEach(n => {
+                    workDayCounts[n.id] = 0;
+                    morningCounts[n.id] = 0;
+                    afternoonCounts[n.id] = 0;
+                    nightCounts[n.id] = 0;
+                    otCounts[n.id] = 0;
+                });
 
-  const tbody = document.createElement('tbody');
-  shifts.forEach(shift=>{
-    const tr = document.createElement('tr');
-    const th = document.createElement('th');th.textContent = shift;tr.appendChild(th);
-    for(let d=0;d<days;d++){
-      const td = document.createElement('td');td.className='shift';
-      const assigned = ((DB.roster[d] && DB.roster[d][shift])?DB.roster[d][shift]:[]);
-      // show slots
-      for(let s=0;s<per;s++){
-        const nid = assigned[s] || null;
-        const chip = document.createElement('span');chip.className='chip';chip.textContent = nid? (DB.nurses.find(x=>x.id===nid)?.name || '---') : 'ว่าง';
-        chip.onclick = ()=> openAssignPopup(d,shift,s);
-        td.appendChild(chip);
-      }
-      tr.appendChild(td);
-    }
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  wrap.innerHTML='';wrap.appendChild(table);
-  renderStats();
-}
+                // Reset Auto Data
+                nurses.forEach(n => {
+                    for(let d=1; d<=days; d++) {
+                        if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 0, d)])) newSchedule[getKey(n.id, 0, d)] = '0';
+                        if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 1, d)])) newSchedule[getKey(n.id, 1, d)] = '0';
+                    }
+                });
 
-function renderStats(){
-  const container = $('stats');container.innerHTML='';
-  const counts = {};
-  DB.nurses.forEach(n=>counts[n.id]=0);
-  Object.keys(DB.roster).forEach(d=>{
-    Object.keys(DB.roster[d]).forEach(sh=>{
-      (DB.roster[d][sh]||[]).forEach(id=>{if(id)counts[id]=(counts[id]||0)+1});
-    });
-  });
-  DB.nurses.forEach(n=>{
-    const el = document.createElement('div');el.className='stat';el.innerHTML = `<div style="font-weight:700">${n.name}</div><div class='muted'>เวรทั้งหมด: ${counts[n.id]||0}</div>`;container.appendChild(el);
-  });
-}
+                const createBalancedQueue = (candidates, countObj, secondaryCountObj = null) => {
+                    return candidates.sort((a, b) => {
+                        const diff = countObj[a.id] - countObj[b.id];
+                        if (diff !== 0) return diff;
+                        if (secondaryCountObj) return secondaryCountObj[a.id] - secondaryCountObj[b.id];
+                        return 0;
+                    });
+                };
 
-// === Assign popup (simple prompt) ===
-function openAssignPopup(day,shift,slot){
-  const names = ['ว่าง',...DB.nurses.map(n=>n.name)];
-  const selIndex = prompt('เลือกพยาบาล (พิมพ์เลข):\n' + names.map((nm,i)=>`${i}: ${nm}`).join('\n'), '0');
-  if(selIndex==null) return;
-  const idx = parseInt(selIndex);
-  if(isNaN(idx)) return alert('กรอกตัวเลขเท่านั้น');
-  const nurseId = idx===0?null:DB.nurses[idx-1].id;
-  DB.roster[day] = DB.roster[day] || {};
-  DB.roster[day][shift] = DB.roster[day][shift] || [];
-  DB.roster[day][shift][slot] = nurseId;
-  renderRoster();
-}
+                for (let d = 1; d <= days; d++) {
+                    const isRedDay = isHoliday(d);
+                    let usedToday = [];
+                    
+                    let unavailableIds = [];
+                    let nightYesterdayIds = [];
+                    nurses.forEach(n => {
+                        const v1 = newSchedule[getKey(n.id, 1, d)];
+                        if (NON_WORKING_CODES.includes(v1)) unavailableIds.push(n.id);
+                        if (d > 1 && newSchedule[getKey(n.id, 1, d-1)] === 'ด') nightYesterdayIds.push(n.id);
+                    });
 
-// === Smart scheduling algorithm ===
-function generateSmartRoster(){
-  // simple fair-rotation algorithm with constraints: try to avoid consecutive night shifts per nurse when possible
-  const nurses = DB.nurses.map(n=>n.id);
-  const days = DB.settings.days;const shifts = DB.settings.shifts; const per = DB.settings.perShift;
-  if(nurses.length===0) return alert('ยังไม่มีพยาบาล');
-  // initialize counts
-  const counts = {}; nurses.forEach(id=>counts[id]=0);
-  // initialize roster
-  DB.roster = {};
-  for(let d=0;d<days;d++){
-    DB.roster[d] = {};
-    for(const sh of shifts){
-      DB.roster[d][sh] = [];
-      for(let slot=0;slot<per;slot++){
-        // choose nurse with minimum count, prefer those without night previous if sh==='N'
-        const candidates = nurses.slice().sort((a,b)=>counts[a]-counts[b]);
-        let choice = candidates.find(c=>{
-          // avoid consecutive night: if current shift is N and previous day assigned N contains c, skip
-          if(sh==='N' && d>0){
-            const prevN = DB.roster[d-1] && DB.roster[d-1]['N'] || [];
-            if(prevN.includes(c)) return false;
-          }
-          return true;
-        });
-        if(!choice) choice = candidates[0];
-        DB.roster[d][sh].push(choice);
-        counts[choice]++;
-      }
-    }
-  }
-}
+                    const hn = nurses.find(isHN);
+                    if(hn && !unavailableIds.includes(hn.id) && !nightYesterdayIds.includes(hn.id)) {
+                        newSchedule[getKey(hn.id, 1, d)] = isRedDay ? '0' : 'ช';
+                        if(!isRedDay) {
+                            workDayCounts[hn.id]++;
+                            morningCounts[hn.id]++;
+                            usedToday.push(hn.id);
+                        }
+                    }
 
-// === Controls wiring ===
-$('addNurse').onclick = ()=>{
-  const v = $('nurseName').value.trim(); if(!v) return; const id=uid(); DB.nurses.push({id,name:v}); $('nurseName').value=''; renderNurses(); renderRoster(); }
+                    // NIGHT SHIFT
+                    let nightCandidates = nurses.filter(n => 
+                        !usedToday.includes(n.id) && 
+                        !unavailableIds.includes(n.id) &&
+                        !nightYesterdayIds.includes(n.id) &&
+                        canDoNight(n)
+                    );
+                    
+                    nightCandidates = createBalancedQueue(nightCandidates, nightCounts, workDayCounts);
+                    
+                    for(let i=0; i<2 && i<nightCandidates.length; i++) {
+                        const n = nightCandidates[i];
+                        newSchedule[getKey(n.id, 1, d)] = 'ด';
+                        workDayCounts[n.id]++;
+                        nightCounts[n.id]++;
+                        usedToday.push(n.id);
+                    }
 
-$('autoGen').onclick = ()=>{
-  // read settings
-  const sd = $('startDate').value; DB.settings.startDate = sd?sd:formatDateISO(new Date());
-  DB.settings.days = parseInt($('days').value);
-  DB.settings.shifts = Array.from($('shifts').selectedOptions).map(x=>x.value);
-  DB.settings.perShift = parseInt($('perDay').value);
-  generateSmartRoster(); renderRoster(); alert('สร้างตารางเรียบร้อย');
-}
+                    // MORNING SHIFT
+                    let currentMorning = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'ช').length;
+                    let neededMorning = 5 - currentMorning;
+                    
+                    let morningCandidates = nurses.filter(n => 
+                        !usedToday.includes(n.id) && 
+                        !unavailableIds.includes(n.id) &&
+                        !nightYesterdayIds.includes(n.id)
+                    );
+                    
+                    morningCandidates = createBalancedQueue(morningCandidates, morningCounts, workDayCounts);
 
-$('clear').onclick = ()=>{if(confirm('ล้างตารางและรายชื่อ?')){DB.nurses=[];DB.roster={};renderNurses();renderRoster();$('jsonArea').value='';}}
+                    for(let i=0; i<neededMorning && i<morningCandidates.length; i++) {
+                        const n = morningCandidates[i];
+                        newSchedule[getKey(n.id, 1, d)] = 'ช';
+                        workDayCounts[n.id]++;
+                        morningCounts[n.id]++;
+                        usedToday.push(n.id);
+                    }
 
-$('download').onclick = ()=>{
-  const payload = {nurses:DB.nurses, roster:DB.roster, settings:DB.settings};
-  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='roster.json'; a.click(); URL.revokeObjectURL(url);
-}
+                    // AFTERNOON SHIFT
+                    let assignedAfternoon = 0;
+                    
+                    let afternoonCandidates = nurses.filter(n => 
+                        !usedToday.includes(n.id) &&
+                        !unavailableIds.includes(n.id) &&
+                        canDoDouble(n)
+                    );
+                    
+                    afternoonCandidates = createBalancedQueue(afternoonCandidates, afternoonCounts, workDayCounts);
 
-$('importJson').onclick = ()=>{
-  try{
-    const obj = JSON.parse($('jsonArea').value);
-    if(obj.nurses) DB.nurses = obj.nurses; if(obj.roster) DB.roster = obj.roster; if(obj.settings) DB.settings = obj.settings;
-    renderNurses(); renderRoster(); alert('Import สำเร็จ');
-  }catch(e){alert('JSON ไม่ถูกต้อง')}
-}
+                    for(let n of afternoonCandidates) {
+                        if(assignedAfternoon >= 2) break;
+                        
+                        newSchedule[getKey(n.id, 1, d)] = 'บ';
+                        workDayCounts[n.id]++;
+                        afternoonCounts[n.id]++;
+                        usedToday.push(n.id);
+                        assignedAfternoon++;
+                    }
 
-$('resetNurses').onclick = ()=>{if(confirm('รีเซ็ตรายชื่อพยาบาลทั้งหมด?')){DB.nurses=[];renderNurses();renderRoster();}}
+                    if(assignedAfternoon < 3) {
+                        let morningTeam = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'ช');
+                        let doubleCandidates = morningTeam.filter(n => canDoDouble(n) && !isHN(n));
+                        
+                        doubleCandidates = createBalancedQueue(doubleCandidates, otCounts, afternoonCounts);
+                        
+                        for(let n of doubleCandidates) {
+                            if(assignedAfternoon >= 3) break;
+                            newSchedule[getKey(n.id, 0, d)] = 'บ';
+                            otCounts[n.id]++;
+                            afternoonCounts[n.id]++;
+                            assignedAfternoon++;
+                        }
+                    }
 
-// initialize
-(function init(){
-  // sample data
-  DB.nurses = [ {id:uid(),name:'พยาบาล ก'}, {id:uid(),name:'พยาบาล ข'}, {id:uid(),name:'พยาบาล ค'}, {id:uid(),name:'พยาบาล ง'} ];
-  const todayISO = formatDateISO(new Date()); $('startDate').value = todayISO; DB.settings.startDate = todayISO;
-  renderNurses(); renderRoster();
-})();
+                    if(assignedAfternoon < 3) {
+                        afternoonCandidates = afternoonCandidates.filter(n => !usedToday.includes(n.id));
+                        
+                        for(let n of afternoonCandidates) {
+                            if(assignedAfternoon >= 3) break;
+                            newSchedule[getKey(n.id, 1, d)] = 'บ';
+                            workDayCounts[n.id]++;
+                            afternoonCounts[n.id]++;
+                            usedToday.push(n.id);
+                            assignedAfternoon++;
+                        }
+                    }
+                }
 
-</script>
+                // POST-PROCESS: BALANCE TO TARGET
+                nurses.forEach(n => {
+                    let totalRow1 = 0;
+                    for(let d=1; d<=days; d++) {
+                         if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 1, d)])) totalRow1++;
+                    }
+
+                    let excess = totalRow1 - workDayLimit;
+                    
+                    if (excess > 0) {
+                        for(let d=1; d<=days && excess > 0; d++) {
+                            const kBot = getKey(n.id, 1, d);
+                            const kTop = getKey(n.id, 0, d);
+                            
+                            if(newSchedule[kBot] === 'ช' && newSchedule[kTop] === '0') {
+                                newSchedule[kBot] = '0';
+                                newSchedule[kTop] = 'ช';
+                                excess--;
+                            }
+                        }
+                    }
+                    
+                    let deficit = workDayLimit - totalRow1;
+                    if (deficit > 0) {
+                        for(let d=1; d<=days && deficit > 0; d++) {
+                            const kBot = getKey(n.id, 1, d);
+                            const v1 = newSchedule[kBot];
+                            
+                            if(v1 === '0' && !NON_WORKING_CODES.includes(v1)) {
+                                const nightYesterday = d > 1 && newSchedule[getKey(n.id, 1, d-1)] === 'ด';
+                                if(!nightYesterday) {
+                                    const morningCount = countDaily(d, 'ช', newSchedule);
+                                    if(morningCount < 5) {
+                                        newSchedule[kBot] = 'ช';
+                                        deficit--;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                setSchedule(newSchedule);
+                saveAll(null, newSchedule, null, workDayLimit, customConditions);
+                setIsGenerating(false);
+                
+                let summary = `✅ จัดเวรสำเร็จ! (v31)\n\n📊 สรุปวันทำการ:\n`;
+                nurses.forEach(n => {
+                    let total = 0;
+                    for(let d=1; d<=days; d++) {
+                        if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 1, d)])) total++;
+                    }
+                    const status = total === workDayLimit ? '✓' : (total < workDayLimit ? '⚠' : '↑');
+                    summary += `${status} ${n.name.split(' ')[0]}: ${total} วัน\n`;
+                });
+                
+                alert(summary);
+            };
+
+            const countStats = (nurseId) => {
+                const days = getDaysInMonth();
+                let otCount = 0;
+                let normalCount = 0;
+                let workDays = 0;
+                let morningCount = 0;
+                let afternoonCount = 0;
+                let nightCount = 0;
+
+                for(let d=1; d<=days; d++) {
+                    const val1 = schedule[getKey(nurseId, 0, d)] || '0';
+                    const val2 = schedule[getKey(nurseId, 1, d)] || '0';
+                    
+                    if (['ช','บ','ด'].includes(val1)) otCount++;
+                    if (['ช','บ','ด'].includes(val2)) normalCount++;
+
+                    if(val2 === 'ช' || val1 === 'ช') morningCount++;
+                    if(val2 === 'บ' || val1 === 'บ') afternoonCount++;
+                    if(val2 === 'ด') nightCount++;
+
+                    const isWorking = (val1 !== '0' && !NON_WORKING_CODES.includes(val1)) || 
+                                      (val2 !== '0' && !NON_WORKING_CODES.includes(val2));
+                    if (isWorking) workDays++;
+                }
+
+                return {
+                    normalCount,
+                    normalPay: normalCount * RATES.shift,
+                    otCount,
+                    otPay: otCount * RATES.ot,
+                    workDays,
+                    morningCount,
+                    afternoonCount,
+                    nightCount
+                };
+            };
+
+            const handleLimitChange = (e) => {
+                const val = parseInt(e.target.value) || 0;
+                setWorkDayLimit(val);
+                saveAll(null, null, null, val, customConditions);
+            };
+
+            const toggleHoliday = (day) => {
+                const newHolidays = customHolidays.includes(day) 
+                    ? customHolidays.filter(d => d !== day) 
+                    : [...customHolidays, day];
+                setCustomHolidays(newHolidays);
+                saveAll(null, null, newHolidays, workDayLimit, customConditions);
+            };
+
+            const cycleShift = (id, row, day) => {
+                const key = getKey(id, row, day);
+                const current = schedule[key] || '0';
+                const cycleOrder = (row === 0) ? CYCLE_TOP : CYCLE_BOTTOM;
+                const nextIndex = (cycleOrder.indexOf(current) + 1) % cycleOrder.length;
+                const newSchedule = { ...schedule, [key]: cycleOrder[nextIndex] };
+                saveAll(null, newSchedule, null, workDayLimit, customConditions);
+            };
+
+            const handleAddNurse = () => {
+                if(!newNurse.name.trim()) {
+                    alert('⚠️ กรุณากรอกชื่อพยาบาล');
+                    return;
+                }
+                const updated = [...nurses, { id: Date.now(), name: newNurse.name, pos: newNurse.pos || 'L1' }];
+                saveAll(updated, null, null, workDayLimit, customConditions);
+                setNewNurse({ name: '', pos: 'L1' });
+                setShowModal(false);
+            };
+
+            const handleDeleteNurse = (id) => {
+                const nurse = nurses.find(n => n.id === id);
+                if(confirm(`🗑️ ลบ "${nurse.name}" ออกจากระบบ?\n\n(ข้อมูลเวรจะถูกลบด้วย)`)) {
+                    saveAll(nurses.filter(n => n.id !== id), null, null, workDayLimit, customConditions);
+                }
+            };
+
+            const handleEditNurse = (nurse) => {
+                setEditingNurse({ ...nurse });
+            };
+
+            const handleSaveEdit = () => {
+                if (!editingNurse.name.trim()) {
+                    alert('⚠️ กรุณากรอกชื่อพยาบาล');
+                    return;
+                }
+                const updatedNurses = nurses.map(n => 
+                    n.id === editingNurse.id ? { ...editingNurse } : n
+                );
+                saveAll(updatedNurses, null, null, workDayLimit, customConditions);
+                setEditingNurse(null);
+            };
+
+            const handleCancelEdit = () => setEditingNurse(null);
+
+            const countDaily = (day, type, scheduleToUse = schedule) => {
+                let count = 0;
+                nurses.forEach(n => {
+                    if(scheduleToUse[getKey(n.id, 0, day)] === type) count++;
+                    if(scheduleToUse[getKey(n.id, 1, day)] === type) count++;
+                });
+                return count;
+            };
+
+            const exportExcel = () => {
+                const wb = XLSX.utils.book_new();
+                const days = Array.from({length: getDaysInMonth()}, (_, i) => i + 1);
+                const header = ['No', 'ชื่อ-สกุล', 'ตำแหน่ง', ...days, 'รวมเวร', 'ค่าเวร', 'รวม OT', 'ค่า OT', 'วันทำการ'];
+                const data = [];
+                
+                nurses.forEach((n, idx) => {
+                    const s = countStats(n.id);
+                    const r1 = [idx + 1, n.name, n.pos];
+                    days.forEach(d => r1.push(schedule[getKey(n.id, 0, d)] || '0'));
+                    r1.push(s.normalCount, s.normalPay, s.otCount, s.otPay, s.workDays);
+                    
+                    const r2 = ['', '', ''];
+                    days.forEach(d => r2.push(schedule[getKey(n.id, 1, d)] || '0'));
+                    r2.push('', '', '', '', '');
+                    
+                    data.push(r1, r2);
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+                XLSX.utils.book_append_sheet(wb, ws, "Roster");
+                XLSX.writeFile(wb, `ตารางเวร_${currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}.xlsx`);
+            };
+
+            const exportCSV = () => {
+                let csv = 'No,ชื่อ-สกุล,ตำแหน่ง,';
+                const days = getDaysInMonth();
+                for(let i=1; i<=days; i++) csv += `${i},`;
+                csv += 'รวมเวร,ค่าเวร,รวม OT,ค่า OT,วันทำการ\n';
+                
+                nurses.forEach((n, idx) => {
+                    const s = countStats(n.id);
+                    csv += `${idx+1},${n.name},${n.pos},`;
+                    for(let d=1; d<=days; d++) csv += `${schedule[getKey(n.id, 0, d)] || '0'},`;
+                    csv += `${s.normalCount},${s.normalPay},${s.otCount},${s.otPay},${s.workDays}\n`;
+                    
+                    csv += `,,,`;
+                    for(let d=1; d<=days; d++) csv += `${schedule[getKey(n.id, 1, d)] || '0'},`;
+                    csv += ',,,,,\n';
+                });
+                
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `ตารางเวร_${currentDate.getMonth()+1}.csv`;
+                link.click();
+            };
+
+            const getOverallStats = () => {
+                let totalWork = 0;
+                let totalOT = 0;
+                let minWork = Infinity;
+                let maxWork = 0;
+                let avgWork = 0;
+
+                nurses.forEach(n => {
+                    const s = countStats(n.id);
+                    totalWork += s.normalCount;
+                    totalOT += s.otCount;
+                    minWork = Math.min(minWork, s.normalCount);
+                    maxWork = Math.max(maxWork, s.normalCount);
+                });
+
+                avgWork = (totalWork / nurses.length).toFixed(1);
+
+                return { totalWork, totalOT, minWork, maxWork, avgWork };
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col h-screen">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-3 flex justify-between items-center shadow-lg shrink-0 z-50 overflow-x-auto no-print">
+                        <div className="flex items-center gap-4 min-w-max">
+                            <div>
+                                <h1 className="text-xl font-bold flex items-center gap-2">
+                                    <Calculator size={22}/> 
+                                    ระบบตารางเวรพยาบาล
+                                    <span className="text-xs bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full font-bold">v31</span>
+                                </h1>
+                                <p className="text-green-100 text-sm mt-0.5">
+                                    📅 {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })} 
+                                    <span className="ml-2 text-xs">({nurses.length} คน)</span>
+                                </p>
+                            </div>
+                            
+                            <div className="bg-green-800/50 backdrop-blur-sm p-2 rounded-lg flex items-center gap-2 border border-green-600">
+                                <Settings size={16}/>
+                                <span className="text-xs font-medium">เป้าหมาย:</span>
+                                <input 
+                                    type="number" 
+                                    value={workDayLimit} 
+                                    onChange={handleLimitChange} 
+                                    className="w-14 text-black text-center rounded text-sm px-1 h-7 font-bold focus:ring-2 focus:ring-yellow-400"
+                                    min="1"
+                                    max="31"
+                                />
+                                <span className="text-xs text-green-200">วัน/คน</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 min-w-max ml-4">
+                            <div className="flex bg-green-600/50 backdrop-blur-sm rounded-lg p-1 border border-green-500">
+                                <button 
+                                    onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} 
+                                    className="p-1.5 hover:bg-green-500 rounded transition-colors"
+                                    title="เดือนก่อนหน้า"
+                                >
+                                    <ChevronLeft size={18}/>
+                                </button>
+                                <button 
+                                    onClick={() => setCurrentDate(new Date())} 
+                                    className="px-3 py-1 hover:bg-green-500 rounded text-xs font-medium transition-colors"
+                                    title="กลับเดือนปัจจุบัน"
+                                >
+                                    วันนี้
+                                </button>
+                                <button 
+                                    onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} 
+                                    className="p-1.5 hover:bg-green-500 rounded transition-colors"
+                                    title="เดือนถัดไป"
+                                >
+                                    <ChevronRight size={18}/>
+                                </button>
+                            </div>
+
+                            <button 
+                                onClick={() => setShowStatsModal(true)} 
+                                className="bg-blue-500 hover:bg-blue-600 px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-medium shadow-md transition-all hover:shadow-lg"
+                                title="ดูสถิติรวม"
+                            >
+                                <BarChart3 size={16}/> สถิติ
+                            </button>
+
+                            <button 
+                                onClick={autoGenerateRoster} 
+                                disabled={isGenerating}
+                                className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 px-4 py-2 rounded-lg flex items-center gap-1.5 text-sm font-bold shadow-lg text-gray-900 border-2 border-yellow-300 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="จัดเวรอัตโนมัติ"
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <div className="spinner w-4 h-4 border-2"></div>
+                                        <span>กำลังจัด...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap size={16} className="fill-gray-900"/> 
+                                        จัดเวรอัตโนมัติ
+                                    </>
+                                )}
+                            </button>
+
+                            <button 
+                                onClick={clearAllData} 
+                                className="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-medium shadow-md transition-all hover:shadow-lg"
+                                title="ล้างตารางทั้งหมด"
+                            >
+                                <Eraser size={16}/> ล้าง
+                            </button>
+
+                            <button 
+                                onClick={() => setShowModal(true)} 
+                                className="bg-blue-500 hover:bg-blue-600 px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-medium shadow-md transition-all hover:shadow-lg"
+                                title="เพิ่มพยาบาลใหม่"
+                            >
+                                <UserPlus size={16}/> เพิ่มคน
+                            </button>
+
+                            <div className="flex gap-1">
+                                <button 
+                                    onClick={exportExcel} 
+                                    className="bg-white text-green-700 hover:bg-gray-50 px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-bold shadow-md transition-all hover:shadow-lg"
+                                    title="ดาวน์โหลด Excel"
+                                >
+                                    <Download size={16}/> Excel
+                                </button>
+                                <button 
+                                    onClick={exportCSV} 
+                                    className="bg-white text-green-700 hover:bg-gray-50 px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-bold shadow-md transition-all hover:shadow-lg"
+                                    title="ดาวน์โหลด CSV"
+                                >
+                                    <Download size={16}/> CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Custom Conditions */}
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 p-2.5 text-sm border-b-2 border-green-200 shrink-0 no-print">
+                        <div className="flex items-center gap-2">
+                            <Info size={16} className="text-green-600"/>
+                            <span className="font-medium text-gray-700">📝 บันทึกเพิ่มเติม:</span>
+                        </div>
+                        <textarea 
+                            value={customConditions} 
+                            onChange={(e) => saveAll(null, null, null, workDayLimit, e.target.value)} 
+                            className="w-full mt-1.5 p-2 text-gray-700 border-2 border-green-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
+                            rows="1"
+                            placeholder="เช่น: หนต.ไม่เข้าเวรวันอาทิตย์, L1 ไม่เข้าเวรดึก, มีคนลาวันที่ 15-20..."
+                        />
+                    </div>
+
+                    {/* Legend */}
+                    <div className="bg-white p-2 text-xs border-b border-gray-200 shrink-0 no-print">
+                        <div className="flex flex-wrap gap-4 items-center justify-center">
+                            <span className="font-bold text-gray-700">🎨 สัญลักษณ์:</span>
+                            <div className="flex gap-3">
+                                <span className="px-2 py-1 rounded bg-green-50 text-green-700 font-bold border border-green-200">ช = เช้า</span>
+                                <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 font-bold border border-yellow-200">บ = บ่าย</span>
+                                <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 font-bold border border-purple-200">ด = ดึก</span>
+                                <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200">Va = ลาพักร้อน</span>
+                                <span className="px-2 py-1 rounded bg-orange-50 text-orange-700 font-bold border border-orange-200">ปช = ปฏิบัติงานชดเชย</span>
+                                <span className="px-2 py-1 rounded bg-red-100 text-red-700 font-bold border border-red-200">ลาป่วย</span>
+                                <span className="px-2 py-1 rounded bg-indigo-100 text-indigo-700 font-bold border border-indigo-200">ลากิจ</span>
+                            </div>
+                            <span className="text-gray-500">| คลิกเซลล์เพื่อเปลี่ยนเวร | คลิกหัววันเพื่อกำหนดวันหยุด</span>
+                        </div>
+                    </div>
+
+                    {/* Table Container */}
+                    <div className="flex-1 overflow-auto relative bg-white m-3 shadow-xl rounded-lg border-2 border-gray-200">
+                        <table className="border-collapse">
+                            <thead>
+                                <tr className="h-12 bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-semibold text-sm">
+                                    <th className="sticky-1">No</th>
+                                    <th className="sticky-2">ชื่อ - สกุล</th>
+                                    <th className="sticky-3">ตำแหน่ง</th>
+                                    {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                        const day = i + 1;
+                                        const isRed = isHoliday(day);
+                                        const dayName = ['อา','จ','อ','พ','พฤ','ศ','ส'][new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay()];
+                                        return (
+                                            <th 
+                                                key={i} 
+                                                onClick={() => toggleHoliday(day)} 
+                                                className={`min-w-[38px] header-hover select-none transition-all border-b-2 ${
+                                                    isRed 
+                                                        ? 'text-red-600 bg-red-50 border-red-300 font-bold' 
+                                                        : 'border-gray-200 hover:bg-gray-100'
+                                                }`}
+                                                title={`คลิกเพื่อ${isRed ? 'ยกเลิก' : 'กำหนด'}วันหยุด`}
+                                            >
+                                                <div className="font-bold">{day}</div>
+                                                <div className="text-[10px] font-normal text-gray-500 mt-0.5">
+                                                    {dayName}
+                                                </div>
+                                            </th>
+                                        );
+                                    })}
+                                    <th className="min-w-[55px] bg-gradient-to-r from-gray-100 to-gray-200 border-l-2 border-gray-400 font-bold">วัน<br/>ทำการ</th>
+                                    <th className="min-w-[55px] bg-gradient-to-r from-gray-100 to-gray-200">ค่า<br/>เวร</th>
+                                    <th className="min-w-[55px] bg-gradient-to-r from-orange-50 to-orange-100 text-orange-800 border-l-2 border-orange-300 font-bold">รวม<br/>OT</th>
+                                    <th className="min-w-[55px] bg-gradient-to-r from-orange-50 to-orange-100 text-orange-800">ค่า<br/>OT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {nurses.map((nurse, idx) => {
+                                    const s = countStats(nurse.id);
+                                    const isTargetMet = s.normalCount === workDayLimit;
+                                    const targetColor = isTargetMet 
+                                        ? 'text-green-600 bg-green-50' 
+                                        : (s.normalCount < workDayLimit ? 'text-red-500 bg-red-50' : 'text-blue-600 bg-blue-50');
+
+                                    return (
+                                        <React.Fragment key={nurse.id}>
+                                            {/* OT Row */}
+                                            <tr className="group hover:bg-gray-50 transition-colors fade-in">
+                                                <td rowSpan={2} className="sticky-1 font-bold text-gray-600 bg-white group-hover:bg-gray-50 transition-colors">
+                                                    {idx + 1}
+                                                </td>
+                                                <td rowSpan={2} className="sticky-2 text-left px-2 relative bg-white group-hover:bg-gray-50 overflow-hidden transition-colors">
+                                                    {editingNurse && editingNurse.id === nurse.id ? (
+                                                        <div className="flex flex-col gap-1.5 py-1">
+                                                            <input 
+                                                                type="text" 
+                                                                value={editingNurse.name} 
+                                                                onChange={(e) => setEditingNurse({...editingNurse, name: e.target.value})}
+                                                                className="text-sm border-2 border-blue-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-blue-500"
+                                                                autoFocus
+                                                                placeholder="ชื่อ-นามสกุล"
+                                                            />
+                                                            <select 
+                                                                value={editingNurse.pos} 
+                                                                onChange={(e) => setEditingNurse({...editingNurse, pos: e.target.value})}
+                                                                className="text-xs border-2 border-blue-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-blue-500"
+                                                            >
+                                                                <option value="หนต.">หนต. (หัวหน้าตึก)</option>
+                                                                <option value="L5">L5 (ชำนาญการพิเศษ)</option>
+                                                                <option value="L4">L4 (ชำนาญการ)</option>
+                                                                <option value="L2">L2 (ปฏิบัติการ)</option>
+                                                                <option value="L1">L1 (ชำนาญงาน)</option>
+                                                            </select>
+                                                            <div className="flex gap-1.5 justify-end">
+                                                                <button 
+                                                                    onClick={handleSaveEdit} 
+                                                                    className="text-white bg-green-500 hover:bg-green-600 px-3 py-1 rounded flex items-center gap-1 text-xs font-bold transition-colors"
+                                                                >
+                                                                    <Save size={12}/> บันทึก
+                                                                </button>
+                                                                <button 
+                                                                    onClick={handleCancelEdit} 
+                                                                    className="text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded flex items-center gap-1 text-xs font-bold transition-colors"
+                                                                >
+                                                                    <X size={12}/> ยกเลิก
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="font-medium text-gray-800 text-sm truncate pr-14 w-full" title={nurse.name}>
+                                                                {nurse.name}
+                                                            </div>
+                                                            <div className="flex absolute right-1 top-1/2 -translate-y-1/2 gap-0.5">
+                                                                <button 
+                                                                    onClick={() => handleEditNurse(nurse)} 
+                                                                    className="text-gray-300 hover:text-blue-500 transition-colors p-1.5 rounded hover:bg-blue-50"
+                                                                    title="แก้ไขข้อมูล"
+                                                                >
+                                                                    <Edit2 size={14} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDeleteNurse(nurse.id)} 
+                                                                    className="text-gray-300 hover:text-red-500 transition-colors p-1.5 rounded hover:bg-red-50"
+                                                                    title="ลบพยาบาล"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </td>
+                                                <td rowSpan={2} className="sticky-3 text-xs font-bold text-gray-700 bg-white group-hover:bg-gray-50 transition-colors">
+                                                    {editingNurse && editingNurse.id === nurse.id ? '' : (
+                                                        <span className="px-2 py-1 rounded bg-gray-100 border border-gray-300">
+                                                            {nurse.pos}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                
+                                                {/* OT Row Days */}
+                                                {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                                    const d = i + 1;
+                                                    const val = schedule[getKey(nurse.id, 0, d)] || '0';
+                                                    const colorClass = val !== '0' 
+                                                        ? 'text-red-600 font-bold bg-red-50 border-red-200' 
+                                                        : 'text-gray-300 bg-white';
+                                                    return (
+                                                        <td 
+                                                            key={d} 
+                                                            onClick={() => cycleShift(nurse.id, 0, d)} 
+                                                            className={`cell-hover border-b-0 ${colorClass} transition-all`}
+                                                            title="คลิกเพื่อเปลี่ยนเวร OT"
+                                                        >
+                                                            {val}
+                                                        </td>
+                                                    );
+                                                })}
+
+                                                <td rowSpan={2} className={`font-bold text-base border-l-2 border-gray-400 ${targetColor} transition-colors`}>
+                                                    {s.normalCount}
+                                                    {!isTargetMet && (
+                                                        <div className="text-[9px] font-normal">
+                                                            {s.normalCount < workDayLimit ? `ขาด ${workDayLimit - s.normalCount}` : `เกิน ${s.normalCount - workDayLimit}`}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td rowSpan={2} className="bg-gray-50 text-gray-700 text-xs font-medium">
+                                                    {s.normalPay > 0 ? s.normalPay.toLocaleString() : '-'}
+                                                </td>
+                                                <td rowSpan={2} className="bg-orange-50 font-bold text-orange-800 text-base border-l-2 border-orange-300">
+                                                    {s.otCount}
+                                                </td>
+                                                <td rowSpan={2} className="bg-orange-50 text-orange-800 text-xs font-medium">
+                                                    {s.otPay > 0 ? s.otPay.toLocaleString() : '-'}
+                                                </td>
+                                            </tr>
+
+                                            {/* Normal Row */}
+                                            <tr className="group hover:bg-gray-50 border-b-2 border-gray-300 transition-colors">
+                                                {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                                    const d = i + 1;
+                                                    const val = schedule[getKey(nurse.id, 1, d)] || '0';
+                                                    return (
+                                                        <td 
+                                                            key={d} 
+                                                            onClick={() => cycleShift(nurse.id, 1, d)} 
+                                                            className={`cell-hover ${SHIFT_TYPES[val]?.color || ''} transition-all`}
+                                                            title="คลิกเพื่อเปลี่ยนเวร"
+                                                        >
+                                                            {val}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                            <tfoot className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold text-gray-700 text-xs">
+                                <tr className="border-t-2 border-gray-400">
+                                    <td colSpan="3" className="sticky-1 text-right px-2 bg-gradient-to-r from-gray-100 to-gray-200 z-50 h-9 border-r-0"></td>
+                                    <td className="sticky-3 bg-gradient-to-r from-gray-100 to-gray-200 text-right px-2 shadow-none border-r-2 border-gray-400 font-bold">
+                                        รวม เช้า
+                                    </td>
+                                    {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                        const count = countDaily(i+1, 'ช');
+                                        return (
+                                            <td key={i} className={`text-green-600 font-bold ${count < 5 ? 'bg-red-100' : 'bg-green-50'}`}>
+                                                {count || '-'}
+                                            </td>
+                                        );
+                                    })}
+                                    <td colSpan="4" className="bg-gray-300"></td>
+                                </tr>
+                                <tr>
+                                    <td colSpan="3" className="sticky-1 bg-gradient-to-r from-gray-100 to-gray-200 border-r-0"></td>
+                                    <td className="sticky-3 bg-gradient-to-r from-gray-100 to-gray-200 text-right px-2 shadow-none border-r-2 border-gray-400 font-bold">
+                                        รวม บ่าย
+                                    </td>
+                                    {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                        const count = countDaily(i+1, 'บ');
+                                        return (
+                                            <td key={i} className={`text-yellow-600 font-bold ${count < 3 ? 'bg-red-100' : 'bg-yellow-50'}`}>
+                                                {count || '-'}
+                                            </td>
+                                        );
+                                    })}
+                                    <td colSpan="4" className="bg-gray-300"></td>
+                                </tr>
+                                <tr>
+                                    <td colSpan="3" className="sticky-1 bg-gradient-to-r from-gray-100 to-gray-200 border-r-0"></td>
+                                    <td className="sticky-3 bg-gradient-to-r from-gray-100 to-gray-200 text-right px-2 shadow-none border-r-2 border-gray-400 font-bold">
+                                        รวม ดึก
+                                    </td>
+                                    {Array.from({ length: getDaysInMonth() }, (_, i) => {
+                                        const count = countDaily(i+1, 'ด');
+                                        return (
+                                            <td key={i} className={`text-purple-600 font-bold ${count < 2 ? 'bg-red-100' : 'bg-purple-50'}`}>
+                                                {count || '-'}
+                                            </td>
+                                        );
+                                    })}
+                                    <td colSpan="4" className="bg-gray-300"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {/* Add Nurse Modal */}
+                    {showModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 fade-in">
+                            <div className="bg-white p-6 rounded-xl shadow-2xl w-96 border-2 border-green-200 fade-in">
+                                <h2 className="text-xl font-bold mb-4 text-green-800 flex items-center gap-2">
+                                    <UserPlus size={20}/>
+                                    เพิ่มพยาบาลใหม่
+                                </h2>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">ชื่อ-สกุล *</label>
+                                        <input 
+                                            type="text" 
+                                            value={newNurse.name} 
+                                            onChange={(e) => setNewNurse({...newNurse, name: e.target.value})}
+                                            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            placeholder="เช่น น.ส.สมหญิง ใจดี"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">ตำแหน่ง *</label>
+                                        <select 
+                                            value={newNurse.pos} 
+                                            onChange={(e) => setNewNurse({...newNurse, pos: e.target.value})}
+                                            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        >
+                                            <option value="หนต.">หนต. (หัวหน้าตึก)</option>
+                                            <option value="L5">L5 (ชำนาญการพิเศษ)</option>
+                                            <option value="L4">L4 (ชำนาญการ)</option>
+                                            <option value="L2">L2 (ปฏิบัติการ)</option>
+                                            <option value="L1">L1 (ชำนาญงาน)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button 
+                                        onClick={() => setShowModal(false)}
+                                        className="px-5 py-2.5 text-sm font-medium border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        ยกเลิก
+                                    </button>
+                                    <button 
+                                        onClick={handleAddNurse}
+                                        className="px-5 py-2.5 text-sm font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                                    >
+                                        ✓ เพิ่มเข้าระบบ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Statistics Modal */}
+                    {showStatsModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 fade-in">
+                            <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-4xl border-2 border-blue-200 fade-in max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-bold text-blue-800 flex items-center gap-2">
+                                        <BarChart3 size={22}/>
+                                        📊 สถิติรวมทั้งหมด
+                                    </h2>
+                                    <button 
+                                        onClick={() => setShowStatsModal(false)}
+                                        className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+                                    >
+                                        <X size={20}/>
+                                    </button>
+                                </div>
+
+                                {/* Overall Stats */}
+                                <div className="grid grid-cols-5 gap-4 mb-6">
+                                    {(() => {
+                                        const stats = getOverallStats();
+                                        return (
+                                            <>
+                                                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200">
+                                                    <div className="text-xs text-green-600 font-medium mb-1">รวมวันทำการ</div>
+                                                    <div className="text-2xl font-bold text-green-700">{stats.totalWork}</div>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-2 border-orange-200">
+                                                    <div className="text-xs text-orange-600 font-medium mb-1">รวม OT</div>
+                                                    <div className="text-2xl font-bold text-orange-700">{stats.totalOT}</div>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200">
+                                                    <div className="text-xs text-blue-600 font-medium mb-1">เฉลี่ย/คน</div>
+                                                    <div className="text-2xl font-bold text-blue-700">{stats.avgWork}</div>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border-2 border-red-200">
+                                                    <div className="text-xs text-red-600 font-medium mb-1">ขั้นต่ำ</div>
+                                                    <div className="text-2xl font-bold text-red-700">{stats.minWork}</div>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200">
+                                                    <div className="text-xs text-purple-600 font-medium mb-1">สูงสุด</div>
+                                                    <div className="text-2xl font-bold text-purple-700">{stats.maxWork}</div>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+
+                                {/* Individual Stats */}
+                                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+                                    <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                        <Info size={16}/>
+                                        รายละเอียดแต่ละคน
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-200">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left border">ชื่อ</th>
+                                                    <th className="px-3 py-2 text-center border">ตำแหน่ง</th>
+                                                    <th className="px-3 py-2 text-center border bg-green-100">วันทำการ</th>
+                                                    <th className="px-3 py-2 text-center border bg-green-100">ค่าเวร</th>
+                                                    <th className="px-3 py-2 text-center border bg-orange-100">OT</th>
+                                                    <th className="px-3 py-2 text-center border bg-orange-100">ค่า OT</th>
+                                                    <th className="px-3 py-2 text-center border bg-blue-100">เช้า</th>
+                                                    <th className="px-3 py-2 text-center border bg-yellow-100">บ่าย</th>
+                                                    <th className="px-3 py-2 text-center border bg-purple-100">ดึก</th>
+                                                    <th className="px-3 py-2 text-center border bg-gray-100">รวมทั้งหมด</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {nurses.map((n, idx) => {
+                                                    const s = countStats(n.id);
+                                                    const isBalanced = s.normalCount === workDayLimit;
+                                                    return (
+                                                        <tr key={n.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
+                                                            <td className="px-3 py-2 border font-medium">{n.name}</td>
+                                                            <td className="px-3 py-2 border text-center">
+                                                                <span className="px-2 py-0.5 bg-gray-200 rounded text-xs font-bold">{n.pos}</span>
+                                                            </td>
+                                                            <td className={`px-3 py-2 border text-center font-bold ${
+                                                                isBalanced ? 'text-green-600 bg-green-50' : 
+                                                                (s.normalCount < workDayLimit ? 'text-red-600 bg-red-50' : 'text-blue-600 bg-blue-50')
+                                                            }`}>
+                                                                {s.normalCount}
+                                                                {!isBalanced && <span className="text-[10px] ml-1">({s.normalCount - workDayLimit > 0 ? '+' : ''}{s.normalCount - workDayLimit})</span>}
+                                                            </td>
+                                                            <td className="px-3 py-2 border text-center bg-green-50">{s.normalPay.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 border text-center font-bold text-orange-600 bg-orange-50">{s.otCount}</td>
+                                                            <td className="px-3 py-2 border text-center bg-orange-50">{s.otPay.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 border text-center bg-blue-50">{s.morningCount}</td>
+                                                            <td className="px-3 py-2 border text-center bg-yellow-50">{s.afternoonCount}</td>
+                                                            <td className="px-3 py-2 border text-center bg-purple-50">{s.nightCount}</td>
+                                                            <td className="px-3 py-2 border text-center font-bold bg-gray-100">{s.workDays}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            <tfoot className="bg-gray-300 font-bold">
+                                                <tr>
+                                                    <td colSpan="2" className="px-3 py-2 border text-right">รวมทั้งหมด:</td>
+                                                    <td className="px-3 py-2 border text-center bg-green-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).normalCount, 0)}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-green-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).normalPay, 0).toLocaleString()}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-orange-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).otCount, 0)}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-orange-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).otPay, 0).toLocaleString()}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-blue-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).morningCount, 0)}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-yellow-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).afternoonCount, 0)}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-purple-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).nightCount, 0)}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center bg-gray-200">
+                                                        {nurses.reduce((sum, n) => sum + countStats(n.id).workDays, 0)}
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <button 
+                                        onClick={() => setShowStatsModal(false)}
+                                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md"
+                                    >
+                                        ปิด
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer Info */}
+                    <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-2 text-center text-xs text-gray-600 border-t border-gray-300 no-print">
+                        <div className="flex justify-center items-center gap-4 flex-wrap">
+                            <span>💡 ระบบตารางเวรพยาบาล v31 - Ultra Balanced Edition</span>
+                            <span>|</span>
+                            <span>🎯 เป้าหมาย: จัดเวรอย่างเท่าเทียมและยุติธรรม</span>
+                            <span>|</span>
+                            <span>📅 เดือน: {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}</span>
+                            <span>|</span>
+                            <span>👥 จำนวน: {nurses.length} คน</span>
+                        </div>
+                    </div>
+
+                    {/* Loading Overlay */}
+                    {isGenerating && (
+                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] fade-in">
+                            <div className="bg-white p-8 rounded-2xl shadow-2xl text-center">
+                                <div className="spinner mx-auto mb-4"></div>
+                                <h3 className="text-lg font-bold text-gray-800 mb-2">กำลังจัดเวรอัตโนมัติ...</h3>
+                                <p className="text-sm text-gray-600">กรุณารอสักครู่</p>
+                                <div className="mt-4 flex gap-2 justify-center">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<RosterApp />);
+    </script>
 </body>
 </html>
