@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตารางเวรพยาบาล v38 - Equal Shift Distribution</title>
+    <title>ตารางเวรพยาบาล v38 - Iron Rules</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
     {
@@ -285,13 +285,13 @@
                 return count;
             };
 
-            // --- AUTO GENERATE (UPDATED LOGIC) ---
+            // --- AUTO GENERATE (WITH IRON RULES) ---
             const autoGenerateRoster = async () => {
-                const confirmMsg = `🎯 ยืนยันการจัดเวร (v38 - Equal Distribution)?\n\n` +
-                                 `1. หนต. = เวรเช้า เฉพาะวันทำการ (เงื่อนไขเดิม)\n` +
-                                 `2. ทุกคน (ยกเว้น หนต.) = เกลี่ยเวร เช้า, บ่าย, ดึก ให้จำนวนครั้งใกล้เคียงกันที่สุด\n` +
-                                 `3. Staff = 5/3/2 ทุกวัน\n` +
-                                 `4. จัดสรรวันทำการให้ตรงเป้าหมาย (${workDayLimit} วัน)`;
+                const confirmMsg = `🎯 ยืนยันการจัดเวร (v38 - Iron Rules)?\n\n` +
+                                 `1. กฎเหล็ก: ห้ามดึกต่อเช้า (หลังลงดึก ต้องพัก)\n` +
+                                 `2. กฎเหล็ก: ห้ามควงเวร (เช้า+บ่าย) 2 วันติดกัน\n` +
+                                 `3. เกลี่ยเวร เช้า/บ่าย/ดึก ให้เท่ากัน\n` +
+                                 `4. Staff = 5/3/2 ทุกวัน`;
                 
                 if (!confirm(confirmMsg)) return;
 
@@ -309,21 +309,25 @@
                     }
                 });
 
-                // Stats Tracker for Equal Distribution
                 let nurseStats = {};
                 nurses.forEach(n => nurseStats[n.id] = { m: 0, a: 0, n: 0, total: 0 });
 
-                // Helper: Sort candidates to find who has the LEAST of a specific shift type
                 const getSortedCandidates = (candidates, shiftType) => {
                     return [...candidates].sort((a, b) => {
-                        // 1. Primary: Compare count of specific shift type (m, a, n) - Ascending
                         const typeA = nurseStats[a.id][shiftType];
                         const typeB = nurseStats[b.id][shiftType];
                         if (typeA !== typeB) return typeA - typeB;
-
-                        // 2. Secondary: Compare total shifts - Ascending
                         return nurseStats[a.id].total - nurseStats[b.id].total;
                     });
+                };
+
+                // Helper to check for consecutive double shifts (Iron Rule #2)
+                const wasDoubleYesterday = (nurseId, currentDay) => {
+                    if (currentDay <= 1) return false;
+                    const k0 = getKey(nurseId, 0, currentDay - 1);
+                    const k1 = getKey(nurseId, 1, currentDay - 1);
+                    // Double shift means both Top and Bottom rows are working shifts
+                    return (['ช','บ','ด'].includes(newSchedule[k0]) && ['ช','บ','ด'].includes(newSchedule[k1]));
                 };
 
                 for (let d = 1; d <= days; d++) {
@@ -332,11 +336,10 @@
                     const targetA = 3;
                     const targetN = 2;
 
-                    // --- 1. Pre-Assign HN (Original Condition) ---
+                    // --- 1. Pre-Assign HN ---
                     const hn = nurses.find(isHN);
                     let hnWorked = false;
                     if (hn) {
-                        // HN works Morning on non-holidays
                         if (!isRed && !NON_WORKING_CODES.includes(newSchedule[getKey(hn.id, 1, d)])) {
                             newSchedule[getKey(hn.id, 1, d)] = 'ช';
                             nurseStats[hn.id].m++;
@@ -345,17 +348,15 @@
                         }
                     }
 
-                    // --- 2. Identify Available Staff (Non-HN) ---
+                    // --- 2. Identify Available Staff ---
                     let availableIds = [];
                     nurses.forEach(n => {
-                        // Skip HN from rotation pool
                         if (n.id === hn?.id) return;
-
                         const k1 = getKey(n.id, 1, d);
-                        // Skip if on Leave
                         if (NON_WORKING_CODES.includes(newSchedule[k1])) return;
                         
-                        // Rule: No work if worked Night yesterday
+                        // IRON RULE #1: No Night -> Morning (Strict: Post-Night = Off)
+                        // If yesterday was Night, skip today entirely
                         if (d > 1 && newSchedule[getKey(n.id, 1, d-1)] === 'ด') return;
 
                         availableIds.push(n.id);
@@ -364,75 +365,76 @@
                     let candidates = nurses.filter(n => availableIds.includes(n.id));
                     let assignedToday = [];
 
-                    // --- 3. Assign Night (Priority 1) ---
-                    // Sort by who has fewest Nights
+                    // --- 3. Assign Night ---
                     let nightPool = getSortedCandidates(candidates, 'n');
                     let countN = 0;
                     for (let n of nightPool) {
                         if (countN < targetN) {
                             newSchedule[getKey(n.id, 1, d)] = 'ด';
                             assignedToday.push(n.id);
-                            nurseStats[n.id].n++;     // Increment Night Count
-                            nurseStats[n.id].total++; // Increment Total
+                            nurseStats[n.id].n++;
+                            nurseStats[n.id].total++;
                             countN++;
                         }
                     }
-                    // Remove assigned form candidates
                     candidates = candidates.filter(n => !assignedToday.includes(n.id));
 
-                    // --- 4. Assign Afternoon (Priority 2) ---
-                    // Sort by who has fewest Afternoons
+                    // --- 4. Assign Afternoon ---
                     let afternoonPool = getSortedCandidates(candidates, 'a');
                     let countA = 0;
                     for (let n of afternoonPool) {
                         if (countA < targetA) {
                             newSchedule[getKey(n.id, 1, d)] = 'บ';
                             assignedToday.push(n.id);
-                            nurseStats[n.id].a++;     // Increment Afternoon Count
+                            nurseStats[n.id].a++;
                             nurseStats[n.id].total++;
                             countA++;
                         }
                     }
                     candidates = candidates.filter(n => !assignedToday.includes(n.id));
 
-                    // --- 5. Assign Morning (Priority 3) ---
-                    // Sort by who has fewest Mornings
+                    // --- 5. Assign Morning ---
                     let morningPool = getSortedCandidates(candidates, 'm');
-                    let countM = hnWorked ? 1 : 0; // HN counts as 1 Morning
-                    
+                    let countM = hnWorked ? 1 : 0;
                     for (let n of morningPool) {
                         if (countM < targetM) {
                             newSchedule[getKey(n.id, 1, d)] = 'ช';
                             assignedToday.push(n.id);
-                            nurseStats[n.id].m++;     // Increment Morning Count
+                            nurseStats[n.id].m++;
                             nurseStats[n.id].total++;
                             countM++;
                         }
                     }
 
-                    // --- 6. Fill Gaps with OT (If needed) ---
-                    // Fill M gap
+                    // --- 6. Fill Gaps with OT (Apply Iron Rule #2) ---
+                    
+                    // Fill M gap (OT Morning for Afternoon Nurse)
                     if (countM < targetM) {
                         let needed = targetM - countM;
                         let doublePool = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'บ'); 
-                        // Pick from Afternoon team who has fewest Mornings overall
                         doublePool = getSortedCandidates(doublePool, 'm');
                         for (let n of doublePool) {
                             if (needed > 0) {
+                                // IRON RULE #2: No Consecutive Double Shifts
+                                if (wasDoubleYesterday(n.id, d)) continue; 
+
                                 newSchedule[getKey(n.id, 0, d)] = 'ช';
                                 nurseStats[n.id].total++;
                                 needed--;
                             }
                         }
                     }
-                    // Fill A gap
+
+                    // Fill A gap (OT Afternoon for Morning Nurse)
                     if (countA < targetA) {
                         let needed = targetA - countA;
                         let doublePool = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'ช');
-                         // Pick from Morning team who has fewest Afternoons overall
                         doublePool = getSortedCandidates(doublePool, 'a');
                         for (let n of doublePool) {
                             if (needed > 0) {
+                                // IRON RULE #2: No Consecutive Double Shifts
+                                if (wasDoubleYesterday(n.id, d)) continue;
+
                                 newSchedule[getKey(n.id, 0, d)] = 'บ';
                                 nurseStats[n.id].total++;
                                 needed--;
@@ -442,7 +444,6 @@
                 }
 
                 // --- 7. Strict Limit Adjustment ---
-                // Move Excess Morning shifts to OT to match WorkDay Limit exactly
                 nurses.forEach(n => {
                     let currentWorkDays = 0;
                     for(let d=1; d<=days; d++) {
@@ -450,16 +451,13 @@
                     }
 
                     let excess = currentWorkDays - workDayLimit;
-
-                    // Move 'ช' from Row 1 to Row 0 if excess
                     if (excess > 0) {
                         for (let d = 1; d <= days && excess > 0; d++) {
                             const k1 = getKey(n.id, 1, d);
                             const k0 = getKey(n.id, 0, d);
-                            
                             if (newSchedule[k1] === 'ช' && newSchedule[k0] === '0') {
-                                newSchedule[k0] = 'ช'; // Move to OT
-                                newSchedule[k1] = '0'; // Remove from Normal
+                                newSchedule[k0] = 'ช'; 
+                                newSchedule[k1] = '0'; 
                                 excess--;
                             }
                         }
@@ -561,7 +559,7 @@
                                     <Calculator size={24} />
                                 </div>
                                 <div>
-                                    <h1 className="text-xl font-bold text-gray-800">ระบบตารางเวรพยาบาล <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">v38 Equal Dist</span></h1>
+                                    <h1 className="text-xl font-bold text-gray-800">ระบบตารางเวรพยาบาล <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">v38 Iron Rules</span></h1>
                                     <div className="flex items-center gap-2 text-sm text-gray-500">
                                         <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="hover:text-blue-600"><ChevronLeft size={16}/></button>
                                         <span className="font-semibold w-32 text-center">{currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}</span>
