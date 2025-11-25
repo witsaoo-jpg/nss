@@ -153,7 +153,7 @@
         };
 
         const SHIFT_TYPES = {
-            '0':      { label: '0',      color: 'bg-white text-gray-300' },
+            '0':      { label: '0',      color: 'bg-white text-red-300' },
             'ช':      { label: 'ช',      color: 'bg-green-100 text-green-800 font-bold' },
             'บ':      { label: 'บ',      color: 'bg-yellow-100 text-yellow-800 font-bold' },
             'ด':      { label: 'ด',      color: 'bg-purple-100 text-purple-800 font-bold' },
@@ -163,20 +163,20 @@
             'ลากิจ':  { label: 'ลากิจ',  color: 'bg-indigo-100 text-indigo-800 font-bold text-[10px]' }
         };
         
-        const NON_WORKING_CODES = ['Va', 'ปช', 'ลาป่วย', 'ลากิจ'];
+        const NON_WORKING_CODES = ['Va', 'ปช','ลากิจ'];
         const CYCLE_TOP = ['0', 'ช', 'บ', 'ด']; 
         const CYCLE_BOTTOM = ['0', 'ช', 'บ', 'ด', ...NON_WORKING_CODES];
 
         const INITIAL_NURSES = [
             { id: 1, name: "นางสงบ จันทร์ธรรม", pos: "หนต." },
-            { id: 2, name: "นายวิษณุกรณ์ โยยา", pos: "L5" },
-            { id: 3, name: "น.ส.จารุพร ศรีสมบัติ", pos: "L5" },
-            { id: 4, name: "น.ส.เขมรุจิ ยาสู่", pos: "L4" },
-            { id: 5, name: "น.ส.ปาจารีย์ นิพันธ์", pos: "L4" },
+            { id: 2, name: "นายวิษณุกรณ์ โอยา", pos: "L5" },
+            { id: 3, name: "น.ส.จารุพร ศรีสมบัติไพบูลย์", pos: "L5" },
+            { id: 4, name: "น.ส.เขมรุจิ ยาสบู่", pos: "L4" },
+            { id: 5, name: "น.ส.ปาจารีย์ นิพันธ์ประศาสน์", pos: "L4" },
             { id: 6, name: "น.ส.สุนิสา สุขเอิบ", pos: "L4" },
-            { id: 7, name: "น.ส.สุภาวดี ยมน้อย", pos: "L2" },
+            { id: 7, name: "น.ส.สุภาวดี ยมน้อย", pos: "L4" },
             { id: 8, name: "น.ส.ทิพปภา การพิธี", pos: "L2" },
-            { id: 9, name: "น.ส.สุนันทรา เกตุพงษ์", pos: "L1" },
+            { id: 9, name: "น.ส.สุนันทรา เกตุพงษ์", pos: "L2" },
             { id: 10, name: "น.ส.สิริรัตน์ บัวประเสริฐ", pos: "L1" }
         ];
 
