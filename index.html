@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตารางเวรพยาบาล v38 - Iron Rules</title>
+    <title>ตารางเวรพยาบาล v39 - Max 7 Days & AI Logic</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
     {
@@ -163,7 +163,7 @@
             'ลากิจ':  { label: 'ลากิจ',  color: 'bg-indigo-100 text-indigo-800 font-bold text-[10px]' }
         };
         
-        const NON_WORKING_CODES = ['Va', 'ปช','ลากิจ'];
+        const NON_WORKING_CODES = ['Va', 'ปช','ลากิจ', 'ลาป่วย'];
         const CYCLE_TOP = ['0', 'ช', 'บ', 'ด']; 
         const CYCLE_BOTTOM = ['0', 'ช', 'บ', 'ด', ...NON_WORKING_CODES];
 
@@ -194,11 +194,11 @@
 
             // --- LOCAL STORAGE ---
             useEffect(() => {
-                const savedData = localStorage.getItem('roster_data_v38');
-                const savedNurses = localStorage.getItem('roster_nurses_v38');
-                const savedHolidays = localStorage.getItem('roster_holidays_v38');
-                const savedLimit = localStorage.getItem('roster_limit_v38');
-                const savedConditions = localStorage.getItem('roster_conditions_v38');
+                const savedData = localStorage.getItem('roster_data_v39');
+                const savedNurses = localStorage.getItem('roster_nurses_v39');
+                const savedHolidays = localStorage.getItem('roster_holidays_v39');
+                const savedLimit = localStorage.getItem('roster_limit_v39');
+                const savedConditions = localStorage.getItem('roster_conditions_v39');
                 
                 if (savedData) setSchedule(JSON.parse(savedData));
                 if (savedNurses) setNurses(JSON.parse(savedNurses));
@@ -210,23 +210,23 @@
             const saveAll = (updatedNurses, updatedSchedule, updatedHolidays, updatedLimit, updatedConditions) => {
                 if(updatedNurses) {
                     setNurses(updatedNurses);
-                    localStorage.setItem('roster_nurses_v38', JSON.stringify(updatedNurses));
+                    localStorage.setItem('roster_nurses_v39', JSON.stringify(updatedNurses));
                 }
                 if(updatedSchedule) {
                     setSchedule(updatedSchedule);
-                    localStorage.setItem('roster_data_v38', JSON.stringify(updatedSchedule));
+                    localStorage.setItem('roster_data_v39', JSON.stringify(updatedSchedule));
                 }
                 if(updatedHolidays) {
                     setCustomHolidays(updatedHolidays);
-                    localStorage.setItem('roster_holidays_v38', JSON.stringify(updatedHolidays));
+                    localStorage.setItem('roster_holidays_v39', JSON.stringify(updatedHolidays));
                 }
                 if(updatedLimit !== undefined) {
                     setWorkDayLimit(updatedLimit);
-                    localStorage.setItem('roster_limit_v38', updatedLimit);
+                    localStorage.setItem('roster_limit_v39', updatedLimit);
                 }
                 if(updatedConditions !== undefined) {
                     setCustomConditions(updatedConditions);
-                    localStorage.setItem('roster_conditions_v38', updatedConditions);
+                    localStorage.setItem('roster_conditions_v39', updatedConditions);
                 }
             };
 
@@ -285,13 +285,14 @@
                 return count;
             };
 
-            // --- AUTO GENERATE (WITH IRON RULES) ---
+            // --- AUTO GENERATE (WITH AI & IRON RULES) ---
             const autoGenerateRoster = async () => {
-                const confirmMsg = `🎯 ยืนยันการจัดเวร (v38 - Iron Rules)?\n\n` +
-                                 `1. กฎเหล็ก: ห้ามดึกต่อเช้า (หลังลงดึก ต้องพัก)\n` +
-                                 `2. กฎเหล็ก: ห้ามควงเวร (เช้า+บ่าย) 2 วันติดกัน\n` +
-                                 `3. เกลี่ยเวร เช้า/บ่าย/ดึก ให้เท่ากัน\n` +
-                                 `4. Staff = 5/3/2 ทุกวัน`;
+                const confirmMsg = `🎯 ยืนยันการจัดเวร (v39 AI - Max 7 Days)?\n\n` +
+                                 `1. ห้ามดึกต่อเช้า (หลังลงดึก ต้องพัก)\n` +
+                                 `2. ห้ามควงเวร (เช้า+บ่าย) 2 วันติดกัน\n` +
+                                 `3. [AI] Max 7 วันติดกันต้องพัก\n` +
+                                 `4. [AI Loop] คนเกินวันทำการ -> กระจายเวรเช้าขึ้น OT แบบสุ่ม\n` +
+                                 `5. Staff = 5/3/2`;
                 
                 if (!confirm(confirmMsg)) return;
 
@@ -301,7 +302,7 @@
                 const days = getDaysInMonth();
                 let newSchedule = { ...schedule };
                 
-                // 1. Reset
+                // 1. Reset working shifts only (keep holidays/leaves if any logic for them exists in future)
                 nurses.forEach(n => {
                     for(let d=1; d<=days; d++) {
                         if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 1, d)])) newSchedule[getKey(n.id, 1, d)] = '0';
@@ -312,21 +313,40 @@
                 let nurseStats = {};
                 nurses.forEach(n => nurseStats[n.id] = { m: 0, a: 0, n: 0, total: 0 });
 
-                const getSortedCandidates = (candidates, shiftType) => {
+                // --- AI Helper: Scoring System ---
+                // Scores candidates based on shift balance and slight randomness to avoid patterns
+                const getAICandidates = (candidates, shiftType) => {
                     return [...candidates].sort((a, b) => {
-                        const typeA = nurseStats[a.id][shiftType];
-                        const typeB = nurseStats[b.id][shiftType];
-                        if (typeA !== typeB) return typeA - typeB;
-                        return nurseStats[a.id].total - nurseStats[b.id].total;
+                        const statsA = nurseStats[a.id];
+                        const statsB = nurseStats[b.id];
+                        
+                        // Weighting: Priority to shift type balance, then total balance
+                        const scoreA = (statsA[shiftType] * 100) + statsA.total + (Math.random() * 0.5);
+                        const scoreB = (statsB[shiftType] * 100) + statsB.total + (Math.random() * 0.5);
+                        
+                        return scoreA - scoreB;
                     });
                 };
 
-                // Helper to check for consecutive double shifts (Iron Rule #2)
+                // Helper: Check consecutive working days
+                const getConsecutiveDays = (scheduleData, nurseId, currentDay) => {
+                    let count = 0;
+                    for(let i = currentDay - 1; i >= 1; i--) {
+                        const k0 = getKey(nurseId, 0, i);
+                        const k1 = getKey(nurseId, 1, i);
+                        // Check if worked either shift on that day
+                        const worked = ['ช','บ','ด'].includes(scheduleData[k0]) || ['ช','บ','ด'].includes(scheduleData[k1]);
+                        if(worked) count++;
+                        else break;
+                    }
+                    return count;
+                };
+
+                // Helper: Check for consecutive double shifts
                 const wasDoubleYesterday = (nurseId, currentDay) => {
                     if (currentDay <= 1) return false;
                     const k0 = getKey(nurseId, 0, currentDay - 1);
                     const k1 = getKey(nurseId, 1, currentDay - 1);
-                    // Double shift means both Top and Bottom rows are working shifts
                     return (['ช','บ','ด'].includes(newSchedule[k0]) && ['ช','บ','ด'].includes(newSchedule[k1]));
                 };
 
@@ -341,10 +361,13 @@
                     let hnWorked = false;
                     if (hn) {
                         if (!isRed && !NON_WORKING_CODES.includes(newSchedule[getKey(hn.id, 1, d)])) {
-                            newSchedule[getKey(hn.id, 1, d)] = 'ช';
-                            nurseStats[hn.id].m++;
-                            nurseStats[hn.id].total++;
-                            hnWorked = true;
+                            // NEW IRON RULE #3: Max 7 Days Logic for HN
+                            if (getConsecutiveDays(newSchedule, hn.id, d) < 7) {
+                                newSchedule[getKey(hn.id, 1, d)] = 'ช';
+                                nurseStats[hn.id].m++;
+                                nurseStats[hn.id].total++;
+                                hnWorked = true;
+                            }
                         }
                     }
 
@@ -355,9 +378,12 @@
                         const k1 = getKey(n.id, 1, d);
                         if (NON_WORKING_CODES.includes(newSchedule[k1])) return;
                         
-                        // IRON RULE #1: No Night -> Morning (Strict: Post-Night = Off)
-                        // If yesterday was Night, skip today entirely
+                        // IRON RULE #1: No Night -> Morning
                         if (d > 1 && newSchedule[getKey(n.id, 1, d-1)] === 'ด') return;
+
+                        // NEW IRON RULE #3: Max 7 Consecutive Days (Strict)
+                        const consecutive = getConsecutiveDays(newSchedule, n.id, d);
+                        if (consecutive >= 7) return; // Must rest on 8th day
 
                         availableIds.push(n.id);
                     });
@@ -365,8 +391,8 @@
                     let candidates = nurses.filter(n => availableIds.includes(n.id));
                     let assignedToday = [];
 
-                    // --- 3. Assign Night ---
-                    let nightPool = getSortedCandidates(candidates, 'n');
+                    // --- 3. Assign Night (Using AI Sorting) ---
+                    let nightPool = getAICandidates(candidates, 'n');
                     let countN = 0;
                     for (let n of nightPool) {
                         if (countN < targetN) {
@@ -379,8 +405,8 @@
                     }
                     candidates = candidates.filter(n => !assignedToday.includes(n.id));
 
-                    // --- 4. Assign Afternoon ---
-                    let afternoonPool = getSortedCandidates(candidates, 'a');
+                    // --- 4. Assign Afternoon (Using AI Sorting) ---
+                    let afternoonPool = getAICandidates(candidates, 'a');
                     let countA = 0;
                     for (let n of afternoonPool) {
                         if (countA < targetA) {
@@ -393,8 +419,8 @@
                     }
                     candidates = candidates.filter(n => !assignedToday.includes(n.id));
 
-                    // --- 5. Assign Morning ---
-                    let morningPool = getSortedCandidates(candidates, 'm');
+                    // --- 5. Assign Morning (Using AI Sorting) ---
+                    let morningPool = getAICandidates(candidates, 'm');
                     let countM = hnWorked ? 1 : 0;
                     for (let n of morningPool) {
                         if (countM < targetM) {
@@ -406,18 +432,15 @@
                         }
                     }
 
-                    // --- 6. Fill Gaps with OT (Apply Iron Rule #2) ---
-                    
-                    // Fill M gap (OT Morning for Afternoon Nurse)
+                    // --- 6. Fill Gaps with OT ---
+                    // Fill M gap
                     if (countM < targetM) {
                         let needed = targetM - countM;
                         let doublePool = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'บ'); 
-                        doublePool = getSortedCandidates(doublePool, 'm');
+                        doublePool = getAICandidates(doublePool, 'm');
                         for (let n of doublePool) {
                             if (needed > 0) {
-                                // IRON RULE #2: No Consecutive Double Shifts
                                 if (wasDoubleYesterday(n.id, d)) continue; 
-
                                 newSchedule[getKey(n.id, 0, d)] = 'ช';
                                 nurseStats[n.id].total++;
                                 needed--;
@@ -425,16 +448,14 @@
                         }
                     }
 
-                    // Fill A gap (OT Afternoon for Morning Nurse)
+                    // Fill A gap
                     if (countA < targetA) {
                         let needed = targetA - countA;
                         let doublePool = nurses.filter(n => newSchedule[getKey(n.id, 1, d)] === 'ช');
-                        doublePool = getSortedCandidates(doublePool, 'a');
+                        doublePool = getAICandidates(doublePool, 'a');
                         for (let n of doublePool) {
                             if (needed > 0) {
-                                // IRON RULE #2: No Consecutive Double Shifts
                                 if (wasDoubleYesterday(n.id, d)) continue;
-
                                 newSchedule[getKey(n.id, 0, d)] = 'บ';
                                 nurseStats[n.id].total++;
                                 needed--;
@@ -443,23 +464,41 @@
                     }
                 }
 
-                // --- 7. Strict Limit Adjustment ---
+                // --- 7. Strict Limit Adjustment (AI Loop for Distributed OT) ---
+                // Logic: Move 'Morning' from Bottom to Top to meet limit constraints.
+                // Improvement: Randomize the days chosen to distribute OT evenly.
                 nurses.forEach(n => {
                     let currentWorkDays = 0;
+                    // Calculate current valid work days (Bottom row)
                     for(let d=1; d<=days; d++) {
                         if(['ช','บ','ด'].includes(newSchedule[getKey(n.id, 1, d)])) currentWorkDays++;
                     }
 
                     let excess = currentWorkDays - workDayLimit;
+                    
                     if (excess > 0) {
-                        for (let d = 1; d <= days && excess > 0; d++) {
+                        // Find ALL possible days to flip
+                        let candidatesForFlip = [];
+                        for (let d = 1; d <= days; d++) {
                             const k1 = getKey(n.id, 1, d);
                             const k0 = getKey(n.id, 0, d);
+                            // Condition: Bottom is 'ช', Top is Empty
                             if (newSchedule[k1] === 'ช' && newSchedule[k0] === '0') {
-                                newSchedule[k0] = 'ช'; 
-                                newSchedule[k1] = '0'; 
-                                excess--;
+                                candidatesForFlip.push(d);
                             }
+                        }
+
+                        // AI Randomizer: Shuffle and pick 'excess' amount
+                        // This prevents OT from bunching up at the start of the month
+                        candidatesForFlip.sort(() => Math.random() - 0.5);
+
+                        for (let i = 0; i < excess && i < candidatesForFlip.length; i++) {
+                            const d = candidatesForFlip[i];
+                            const k1 = getKey(n.id, 1, d);
+                            const k0 = getKey(n.id, 0, d);
+                            
+                            newSchedule[k0] = 'ช'; // Move to OT (Top)
+                            newSchedule[k1] = '0'; // Clear Regular (Bottom)
                         }
                     }
                 });
@@ -546,7 +585,7 @@
 
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 XLSX.utils.book_append_sheet(wb, ws, "Roster");
-                XLSX.writeFile(wb, `Roster_v38_${currentDate.getMonth()+1}.xlsx`);
+                XLSX.writeFile(wb, `Roster_v39_${currentDate.getMonth()+1}.xlsx`);
             };
 
             return (
@@ -559,7 +598,7 @@
                                     <Calculator size={24} />
                                 </div>
                                 <div>
-                                    <h1 className="text-xl font-bold text-gray-800">ระบบตารางเวรพยาบาล <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">v38 Iron Rules</span></h1>
+                                    <h1 className="text-xl font-bold text-gray-800">ระบบตารางเวรพยาบาล <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">v39 Max7Days+AI</span></h1>
                                     <div className="flex items-center gap-2 text-sm text-gray-500">
                                         <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="hover:text-blue-600"><ChevronLeft size={16}/></button>
                                         <span className="font-semibold w-32 text-center">{currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}</span>
@@ -571,7 +610,7 @@
                             {/* 2. Condition Input Area */}
                             <div className="flex-1 mx-6 no-print relative">
                                 <span className="absolute -top-3 left-0 text-[10px] text-gray-500 bg-white px-1">เงื่อนไขพิเศษ / กฎเหล็ก</span>
-                                <textarea
+                                <textarea 
                                     value={customConditions}
                                     onChange={(e) => saveAll(null, null, null, workDayLimit, e.target.value)}
                                     className="w-full bg-yellow-50/50 border border-yellow-200 rounded-lg py-2 px-3 text-xs focus:ring-2 focus:ring-yellow-400 focus:outline-none resize-none h-10 transition-all focus:h-20 shadow-sm placeholder-gray-400"
@@ -615,7 +654,6 @@
 
                     {/* 3. Main Table Area */}
                     <div className="flex-1 overflow-auto bg-gray-100 p-4">
-                        {/* Wrapper to handle scrolling - overflow-x-auto enables horizontal scroll */}
                         <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-x-auto max-w-full">
                             <table className="w-full min-w-max">
                                 <thead>
@@ -641,7 +679,7 @@
                                                 </th>
                                             );
                                         })}
-                                        {/* Right Summary Columns - ensured visible via scrolling */}
+                                        {/* Right Summary Columns */}
                                         <th className="bg-blue-50 text-blue-900 border-l-2 border-blue-200 min-w-[60px] px-1">วัน<br/>ทำการ</th>
                                         <th className="bg-yellow-50 text-yellow-900 border-l border-yellow-200 min-w-[60px] px-1">รวม<br/>บ่าย/ดึก</th>
                                         <th className="bg-green-50 text-green-900 border-l border-green-200 min-w-[70px] px-1">ราคา<br/>(360)</th>
@@ -752,12 +790,9 @@
                                         <td colSpan="3" className="sticky-1 text-right pr-2 bg-gray-100 z-40">รวม เช้า</td>
                                         {Array.from({ length: getDaysInMonth() }, (_, i) => {
                                             const day = i + 1;
-                                            // Count both rows for staffing check (Normal + OT)
                                             const c = countDailyTotal(day, 'ช');
-                                            // Target Logic: Every day 5
                                             const target = 5;
                                             const statusColor = c < target ? 'text-red-600 bg-red-100' : (c > target ? 'text-blue-600 bg-blue-100' : 'text-green-700 bg-green-100');
-                                            
                                             return <td key={i} className={statusColor}>{c || '-'}</td>;
                                         })}
                                         <td colSpan="5" className="bg-gray-200"></td>
@@ -767,10 +802,8 @@
                                         {Array.from({ length: getDaysInMonth() }, (_, i) => {
                                             const day = i + 1;
                                             const c = countDailyTotal(day, 'บ');
-                                            // Target Logic: Every day 3
                                             const target = 3;
                                             const statusColor = c < target ? 'text-red-600 bg-red-100' : (c > target ? 'text-blue-600 bg-blue-100' : 'text-yellow-700 bg-yellow-100');
-                                            
                                             return <td key={i} className={statusColor}>{c || '-'}</td>;
                                         })}
                                         <td colSpan="5" className="bg-gray-200"></td>
@@ -780,10 +813,8 @@
                                         {Array.from({ length: getDaysInMonth() }, (_, i) => {
                                             const day = i + 1;
                                             const c = countDailyTotal(day, 'ด');
-                                            // Target Logic: Every day 2
                                             const target = 2;
                                             const statusColor = c < target ? 'text-red-600 bg-red-100' : (c > target ? 'text-blue-600 bg-blue-100' : 'text-purple-700 bg-purple-100');
-
                                             return <td key={i} className={statusColor}>{c || '-'}</td>;
                                         })}
                                         <td colSpan="5" className="bg-gray-200"></td>
@@ -803,7 +834,7 @@
                     </div>
                     <div className="text-center text-[10px] text-gray-400 font-medium">
                             พัฒนาโดย พว.วิษณุกรณ์ โอยา (รพ.ชลบุรี)
-                        </div>
+                    </div>
 
                     {/* Modals */}
                     {showModal && (
